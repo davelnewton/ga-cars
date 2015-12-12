@@ -479,6 +479,69 @@ var MiniMap = {
   }
 };
 
+var Ga = {
+  breedingGroups: function (generation) {
+    return {
+      champs:     _.take(generation, Generation.numChamps),
+      topHalf:    _.take(generation, Math.floor(Generation.size / 2)),
+      generation: generation
+    };
+  },
+
+  // Populations: Champs, Top Half, Entire Generation
+  // Preferences:   40%      40%          20%
+  selectBreedingGroupName: function () {
+    var group = App.rndInt(0, 10);
+
+    if (group <= 4) return 'champs';
+    if (group <= 8) return 'topHalf';
+    return 'generation';
+  },
+
+  // Champs, top 50%, entire group
+  getParents: function (breedingGroups) {
+    var dad
+      , mom
+      , dadIdx
+      , momIdx = -1
+      , dadGroup
+      , momGroup
+      , dadGroupName = Ga.selectBreedingGroupName()
+      , momGroupName = Ga.selectBreedingGroupName()
+      ;
+
+    dadGroup = breedingGroups[dadGroupName];
+    momGroup = breedingGroups[momGroupName];
+
+    dadIdx = App.rndInt(0, dadGroup.length-1);
+    while ((momIdx === -1) || ((dadIdx === momIdx) && (dadGroupName === momGroupName))) {
+      momIdx = App.rndInt(0, momGroup.length-1);
+    }
+
+    // Return array to allow for tri-/pan-sexual reproduction
+    return [dadGroup[dadIdx], momGroup[momIdx]];
+  },
+
+  // Currently "standard" sex.
+  makeChild: function(parents) {
+    var dad = parents[0]
+      , mom = parents[1]
+      ;
+
+    console.log('dad', dad);
+    console.log('mom', mom);
+    console.log('dad', dad.car_def);
+    console.log('mom', mom.car_def);
+  },
+
+  makeChildren: function (numToMake, breedingGroups) {
+    return _.times(numToMake, function () {
+      var parents = Ga.getParents(breedingGroups);
+      Ga.makeChild(parents);
+    });
+  }
+};
+
 var Sim = {
   generationNum:   0,
   cars:           [],
@@ -553,9 +616,13 @@ var Sim = {
   },
 
   nextGeneration: function () {
-    var champions  = Sim.scores.sort(function (a, b) { return (a.v > b.v) ? -1 : 1 });
-    var newGen     = _.map(_.take(champions, Generation.numChamps), function (champ) { return champ.car_def });
-    var numToBuild = Generation.size - Generation.numChamps;
+    var champions      = Sim.scores.sort(function (a, b) { return (a.v > b.v) ? -1 : 1 });
+    var breedingGroups = Ga.breedingGroups(champions);
+    var newGen         = _.map(_.take(champions, Generation.numChamps), function (champ) { return champ.car_def });
+    var numToBuild     = Generation.size - Generation.numChamps;
+
+    var breedingGroups = Ga.breedingGroups(champions);
+    Ga.makeChildren(numToBuild, breedingGroups);
 
     _.times(numToBuild, function () {
       newGen.push(AutoMaker.createRandom());
