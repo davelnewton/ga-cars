@@ -522,16 +522,87 @@ var Ga = {
     return [dadGroup[dadIdx], momGroup[momIdx]];
   },
 
-  // Currently "standard" sex.
-  makeChild: function(parents) {
-    var dad = parents[0]
-      , mom = parents[1]
+  getChildWheelCount: function (parents) {
+    var dad = parents[0].car_def
+      , mom = parents[1].car_def
       ;
 
-    console.log('dad', dad);
-    console.log('mom', mom);
-    console.log('dad', dad.car_def);
-    console.log('mom', mom.car_def);
+    if (dad.wheelCount == mom.wheelCount) {
+      return dad.wheelCount;
+    }
+
+    return parents[App.rndInt(0, 1)].car_def.wheelCount;
+  },
+
+  // Density: A parent's density, or the average.
+  // TODO Add density swap as a gene
+  getChildDensity: function (parents) {
+    var dad = parents[0].car_def
+      , mom = parents[1].car_def
+      , how = App.rndInt(0, 2)
+      ;
+
+    if (how == 0) return dad.chassis_density;
+    if (how == 1) return mom.chassis_density;
+    return (dad.chassis_density + mom.chassis_density) / 2;
+  },
+
+  getChildVertices: function (parents) {
+    var dadVertices = parents[0].car_def.vertex_list
+      , momVertices = parents[1].car_def.vertex_list
+      , dadLength   = dadVertices.length,
+      , momLength   = momVertices.length,
+      , parentVertices = dadVertices.concat(momVertices)
+      , parentXYs = _.map(parentVertices, function (v) {
+          return { x: v.x, y: v.y };
+        })
+      , parentPolars = _.map(parentXYs, function (xy) {
+          var x = xy.x
+            , y = xy.y
+            , r = Math.sqrt((x * x) + (y * y))
+            , theta = Math.atan2(y, x)
+            ;
+
+          if (theta < 0) theta += (2 * Math.PI);
+
+          return { r: r, theta: theta};
+        })
+      , sortedPolars = _.sortBy(parentPolars, function (p) {
+          return p.theta;
+        })
+      , getQuadrant = function (rTheta) {
+          var pi = Math.PI
+            , q1 = pi / 2
+            , q2 = pi
+            , q3 = (3 * pi) / 4
+            ;
+
+          if (rTheta.theta < q1) return 1;
+          if (rTheta.theta < q2) return 2;
+          if (rTheta.theta < q3) return 3;
+          return 4;
+        }
+      , verticesByQuadrant = _.groupBy(sortedPolars, getQuadrant)
+      ;
+
+      debugger
+  },
+
+  // Currently "standard" sex.
+  makeChild: function (parents) {
+    var childCarDef = {}
+      , dad = parents[0]
+      , mom = parents[1]
+      , wheelCount     = Ga.getChildWheelCount(parents)
+      , chassisDensity = Ga.getChildDensity(parents)
+      ;
+
+
+    Ga.getChildVertices(parents);
+
+    // Build 'er up
+    childCarDef.wheelCount      = wheelCount
+    childCarDef.chassis_density = chassisDensity;
   },
 
   makeChildren: function (numToMake, breedingGroups) {
